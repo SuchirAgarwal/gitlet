@@ -1,78 +1,61 @@
 # This makefile is defined to give you the following targets:
 #
-#    default: The default target: Compiles $(PROG) and whatever it 
-#	   depends on.
+#    default: The default target: Compiles the program in package db61b.
 #    style: Run our style checker on the project source files.  Requires that
 #           the source files compile.
-#    check: Compile $(PROG), if needed, and then for each file, F.in, in
-#	   directory testing, use F.in as input to "java $(MAIN_CLASS)" and
-#          compare the output to the contents of the file names F.out.
-#          Report discrepencies.
-#    clean: Remove all the .class files produced by java compilation, 
-#          all Emacs backup files, and testing output files.
+#    check: Compiles the db61b package, if needed, and then performs the
+#           tests described in testing/Makefile.
+#    clean: Remove regeneratable files (such as .class files) produced by
+#           other targets and Emacs backup files.
+#    doc:   Make Javadocs for the gitlet internals.
 #
-# In other words, type 'gmake' to compile everything; 'gmake check' to 
-# compile and test everything, and 'gmake clean' to clean things up.
+# In other words, type 'make' to compile everything; 'make check' to 
+# compile and test everything, and 'make clean' to clean things up.
 # 
 # You can use this file without understanding most of it, of course, but
 # I strongly recommend that you try to figure it out, and where you cannot,
 # that you ask questions.  The Lab Reader contains documentation.
 
+# Name of package containing main procedure 
+PACKAGE = gitlet
+
 STYLEPROG = style61b
 
-JFLAGS = -g -Xlint:unchecked -Xlint:deprecation
-
-CLASSDIR = ../classes
-
-DOCS = ../docs
-
-JAVADOC_FLAGS = -private -Xdoclint:none 
-
-# See comment in ../Makefile
+# The name of the Python 3 program, used in the 'check' target.  If your system
+# has a different name for this program (such as just "python"), run
+# the Makefile with
+#	make PYTHON=python check
 PYTHON = python3
+
+# Flags to pass to tester.py.
+TESTER_FLAGS = --reps=5
 
 RMAKE = "$(MAKE)"
 
-# A CLASSPATH value that (seems) to work on both Windows and Unix systems.
-# To Unix, it looks like ..:$(CLASSPATH):JUNK and to Windows like
-# JUNK;..;$(CLASSPATH).
-CPATH = "..:$(CLASSPATH):;..;$(CLASSPATH)"
+# Targets that don't correspond to files, but are to be treated as commands.
+.PHONY: default check acceptance unit clean style doc
 
-# All .java files in this directory.
-SRCS := $(wildcard *.java)
+default:
+	$(RMAKE) -C $(PACKAGE) default
 
-.PHONY: default check clean style acceptance unit doc
+check: acceptance unit
 
-# As a convenience, you can compile a single Java file X.java in this directory
-# with 'make X.class'
-%.class: %.java
-	javac $(JFLAGS) -cp $(CPATH) $<
-
-# First, and therefore default, target.
-default: compile
-
-compile: $(SRCS)
-	javac $(JFLAGS) -cp $(CPATH) $(SRCS)
-
-style: default
-	$(STYLEPROG) $(SRCS) 
-
-check:
-	$(RMAKE) -C .. PYTHON=$(PYTHON) check
-
-acceptance:
-	$(RMAKE) -C .. PYTHON=$(PYTHON) acceptance
+acceptance: default
+	$(RMAKE) -C testing PYTHON=$(PYTHON) TESTER_FLAGS="$(TESTER_FLAGS)" check
 
 unit: default
-	java -ea -cp $(CPATH) gitlet.UnitTest
+	$(RMAKE) -C gitlet unit
+
+style:
+	$(RMAKE) -C $(PACKAGE) STYLEPROG=$(STYLEPROG) style
 
 doc:
-	if [ ! -d $(DOCS) ]; then mkdir $(DOCS); fi
-	javadoc -d $(DOCS) -link https://docs.oracle.com/javase/10/docs/api \
-	        $(JAVADOC_FLAGS) -sourcepath .. gitlet
+	$(RMAKE) -C $(PACKAGE) doc
 
 # 'make clean' will clean up stuff you can reconstruct.
 clean:
-	$(RM) *~ *.class sentinel
+	$(RM) *~
+	$(RMAKE) -C $(PACKAGE) clean
+	$(RMAKE) -C testing clean
 
 
